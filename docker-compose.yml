@@ -1,0 +1,138 @@
+version: "2"
+
+services:
+  #instancia zookeper
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - 22181:2181
+    # networks:
+    #   - bd_net
+    # volumes:
+    #     - d:\zookeper_data\data:/var/lib/zookeper/data
+    #     - d:\zookeper_data\logs:/var/lib/zookeper/log
+
+  #instancia kakfa
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    depends_on:
+      - zookeeper
+    ports:
+      - 29092:29092
+    environment:
+      BROKER_ID_COMMAND: '{{`docker info -f ''{{.Swarm.NodeAddr}}'' | sed ''s/.*\.\([0-9]\+\)/\1/''`}}'
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    # networks:
+    #   - bd_net
+    # volumes:
+    #     - d:\kafka_data:/var/lib/kafka/data
+
+  kafdrop:
+    container_name: kafdrop
+    image: obsidiandynamics/kafdrop:latest
+    depends_on:
+      - kafka
+    ports:
+      - 19000:9000
+    environment:
+      - KAFKA_BROKERCONNECT=kafka:9092
+    # networks:
+    #   - bd_net
+
+  #  Database
+
+#   postgres:
+#     container_name: postgres
+#     image: postgres:13
+#     volumes:
+#       - d:\pg_data:/var/lib/postgresql/data
+#     ports:
+#       - 5432:5432
+#     environment:
+#       - POSTGRES_USERNAME=postgres
+#       - POSTGRES_USERNAME=1234
+#     # networks:
+#     #   - bd_net
+
+#   cass-n1:
+#     container_name: cass-n1
+#     image: cassandra:latest
+#     volumes:
+#       - d:\cassandra_data\node1:/var/lib/cassandra/data
+#     ports:
+#       - 9042:9042
+#     environment:
+#       - CASSANDRA_START_RPC=true
+#       - CASSANDRA_CLUSTER_NAME=NODE1
+#       - CASSANDRA_ENDPOINT_SNITCH=GossipingPropertyFileSnitch
+#       - CASSANDRA_DC=datacenter1
+#     # networks:
+#     #   - bd_net
+
+#   cass-n2:
+#     container_name: cass-n2
+#     image: cassandra:latest
+#     volumes:
+#       - d:\cassandra_data\node2:/var/lib/cassandra/data
+#     ports:
+#       - 9043:9042
+#     command: bash -c 'sleep 60;  /docker-entrypoint.sh cassandra -f'
+#     depends_on:
+#       - cass1
+#     environment:
+#       - CASSANDRA_START_RPC=true
+#       - CASSANDRA_CLUSTER_NAME=NODE1
+#       - CASSANDRA_ENDPOINT_SNITCH=GossipingPropertyFileSnitch
+#       - CASSANDRA_DC=datacenter1
+#       - CASSANDRA_SEEDS=cass-n1
+#     # networks:
+#     #   - bd_net
+
+#   #database connectors - kafka
+
+#   postgres-connector:
+#     image: debezium/connect:1.3
+#     ports:
+#       - 9090:8083
+#     links:
+#       - kafka
+#     depends_on:
+#       - kafka
+#       - postgres
+#     environment:
+#       - BOOTSTRAP_SERVERS=kafka:9092
+#       - GROUP_ID=pg
+#       - CONFIG_STORAGE_TOPIC=pg_connect_configs
+#       - OFFSET_STORAGE_TOPIC=pg_connect_offsets
+#       - STATUS_STORAGE_TOPIC=pg_connect_statuses
+#     # networks:
+#     #   - bd_net
+
+#   cassandra-connector:
+#     build:
+#       context: ./connector
+#     ports:
+#       - 8080:8083
+#     links:
+#       - kafka
+#     depends_on:
+#       - kafka
+#     environment:
+#       - BOOTSTRAP_SERVERS=kafka:9092
+#       - GROUP_ID=adx
+#       - CONFIG_STORAGE_TOPIC=cassandra_connect_configs
+#       - OFFSET_STORAGE_TOPIC=cassandra_connect_offsets
+#       - STATUS_STORAGE_TOPIC=cassandra_connect_statuses
+
+#   networks:
+#     - bd_net:
+#         - driver: bridge
